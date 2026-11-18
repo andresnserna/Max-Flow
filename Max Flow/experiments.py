@@ -12,7 +12,7 @@ from pathlib import Path
 from threading import Event, Thread
 from time import perf_counter
 from typing import Callable, TypeVar
-
+from data.netgen import build, write
 from road_network import RoadNetwork
 from graph_flow import Graph as FlowGraph
 
@@ -159,24 +159,30 @@ flow changes in each instance.  """
 
         def build_flow_graph(widened_road_id: int | None = None) -> FlowGraph:
             graph = FlowGraph()
+
             for node_id in sorted(network.nodes):
                 graph.add_node(node_id)
+
             for road in network.roads:
                 capacity = road.capacity + (increase if road.id == widened_road_id else 0)
                 if road.oneway:
                     graph.add_edge(road.u, road.v, capacity)
                 else:
                     graph.add_undirected_edge(road.u, road.v, capacity)
+            
             for zone_id in network.zones:
                 graph.add_edge(source, zone_id, uncapped_capacity)
+            
             for shelter_id in network.shelters:
                 graph.add_edge(shelter_id, sink, uncapped_capacity)
+            
             return graph
 
         baseline = build_flow_graph().max_flow(source, sink)
         
         # Limit the trials to the road edges in the original minimum cut.
         cut_pairs = {(u, v) for u, v, _ in baseline.cut_edges}
+        
         cut_roads = [
             road for road in network.roads
             if (road.u, road.v) in cut_pairs
@@ -184,6 +190,7 @@ flow changes in each instance.  """
         ]
 
         output_path = output_dir / f"experiment_2_2_{dataset}.csv"
+       
         with output_path.open("w", newline="", encoding="utf-8") as file:
             writer = csv.writer(file)
             writer.writerow(("attempt#", "u", "v", "weight before", "weight after",
@@ -279,9 +286,9 @@ def exp_2_1_runner(
             raise ValueError("K values cannot be negative")
 
         baseline = _max_flow_with_shelter_capacity(network, None)
-        prediction = math.ceil(baseline / len(network.shelters)) if network.shelters else 0
+        shelter_threshold = math.ceil(baseline / len(network.shelters)) if network.shelters else 0
         if verbose:
-            print(f"{dataset}: prediction before search: first drop near K={prediction}", flush=True)
+            print(f"{dataset}: first drop in max flow at K={shelter_threshold}", flush=True)
         attempts: list[tuple[int, int]] = []
 
         def attempt(capacity: int) -> int:
@@ -326,7 +333,7 @@ def exp_2_1_runner(
 
         results[dataset] = {
             "baseline": baseline,
-            "predicted_first_drop_k": prediction,
+            "predicted_first_drop_k": shelter_threshold,
             "attempts": tuple(attempts),
             "first_drop_k": dropped_k,
             "last_unchanged_k": unchanged_k,
@@ -349,6 +356,7 @@ def main() -> None:
     parser.add_argument("--shelters", type=int, nargs="+", default=[], help="shelter counts for generated cases")
     parser.add_argument("--seed", type=int, default=1, help="repeatable generator seed")
     args = parser.parse_args()
+    
     if args.experiment == "2_1":
         k_by_dataset: dict[str, int] = {}
         for specification in args.k:
@@ -364,11 +372,12 @@ def main() -> None:
             if value < 0:
                 raise SystemExit("--k values must be non-negative")
             k_by_dataset[dataset] = value
+
         instances: dict[str, Path] = {}
+
         if args.generated_nodes is not None:
             if args.generated_nodes < 3 or not args.shelters or any(count < 1 for count in args.shelters):
                 raise SystemExit("--generated-nodes requires size >= 3 and positive --shelters counts")
-            from data.netgen import build, write
             for count in sorted(set(args.shelters)):
                 name = f"generated-{args.generated_nodes}-s{count}-seed{args.seed}"
                 directory = BASE / "results" / "generated" / name
@@ -376,11 +385,14 @@ def main() -> None:
                 instances[name] = directory
         elif args.shelters:
             raise SystemExit("--shelters requires --generated-nodes")
+        
         results = exp_2_1_runner(datasets=(*DATASETS, *instances), k_by_dataset=k_by_dataset,
                                  verbose=args.verbose, instances=instances)
+        
         for dataset, result in results.items():
             print(f"{dataset}: baseline max flow={result['baseline']}")
-            print(f"  Predicted first drop: K={result['predicted_first_drop_k']}")
+            print(f"  First drop in max flow at: K={result['predicted_first_drop_k']}")
+           
             if result["first_drop_k"] is None:
                 print(f"  No shelter-capacity drop found at or above K={k_by_dataset.get(dataset, 0)}")
             else:
@@ -388,7 +400,9 @@ def main() -> None:
                     f"  First drop: K={result['first_drop_k']} "
                     f"(flow below baseline); K={result['last_unchanged_k']} still preserves baseline"
                 )
+           
             print(f"  Attempts: {result['attempts']}")
+       
         if instances:
             output = BASE / "results" / "experiment_2_1_generated.csv"
             with output.open("w", newline="", encoding="utf-8") as file:
