@@ -1,6 +1,8 @@
 #runtime files
 Max Flow/__pycache__
+*.pyc
 
 #project briefings
 Project #2 Part 1.pdf
 Project #2 Part 2.pdf
+for notebooklm
