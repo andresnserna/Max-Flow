@@ -24,6 +24,8 @@ The input files are tab-separated. `nodes.tsv` has `id`, `name`, `kind`, and `pa
 
 ## Queries
 
+All queries use the `tiny` dataset by default. To use a different dataset, pass its files with `--nodes` and `--edges` (see [Run it](#run-it)).
+
 ### Evacuation assignments
 
 ```sh
