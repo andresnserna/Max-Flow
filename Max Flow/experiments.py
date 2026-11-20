@@ -385,6 +385,14 @@ def main() -> None:
                 instances[name] = directory
         elif args.shelters:
             raise SystemExit("--shelters requires --generated-nodes")
+
+        # A generated instance can be selected by naming it in --k, which
+        # allows running an already generated case without regenerating it.
+        for dataset in k_by_dataset:
+            if dataset.startswith("generated-") and dataset not in instances:
+                directory = BASE / "results" / "generated" / dataset
+                if (directory / "nodes.tsv").is_file() and (directory / "edges.tsv").is_file():
+                    instances[dataset] = directory
         
         results = exp_2_1_runner(datasets=(*DATASETS, *instances), k_by_dataset=k_by_dataset,
                                  verbose=args.verbose, instances=instances)
