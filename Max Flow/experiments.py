@@ -396,10 +396,11 @@ def main() -> None:
         
         results = exp_2_1_runner(datasets=(*DATASETS, *instances), k_by_dataset=k_by_dataset,
                                  verbose=args.verbose, instances=instances)
-        
+
+        print()
         for dataset, result in results.items():
-            print(f"{dataset}: baseline max flow={result['baseline']}")
-            print(f"  First drop in max flow at: K={result['predicted_first_drop_k']}")
+            print(f"{dataset}: Max Flow for this graph = {result['baseline']}")
+            # print(f"  First drop in max flow at: K={result['predicted_first_drop_k']}")
            
             if result["first_drop_k"] is None:
                 print(f"  No shelter-capacity drop found at or above K={k_by_dataset.get(dataset, 0)}")
