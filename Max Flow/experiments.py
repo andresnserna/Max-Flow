@@ -17,79 +17,11 @@ from road_network import RoadNetwork
 from graph_flow import Graph as FlowGraph
 
 
-T = TypeVar("T")
+# T = TypeVar("T")
 BASE = Path(__file__).parent
 DATASETS = ("tiny", "small", "medium")
-APSP_ALGORITHMS = ("dijkstra", "floyd-warshall", "johnson")
-MAX_FLOYD_CELLS = 4_000_000
-
-
-@dataclass(frozen=True)
-class TimedResult:
-    value: object | None
-    seconds: float
-    timed_out: bool = False
-
-
-class ThreadedRunner:
-    """Run a callable in a worker while a separate thread measures its runtime."""
-
-    @staticmethod
-    def run(function: Callable[[Event], T], *, stop_after: float | None = 30.0) -> TimedResult:
-        started = Event()
-        finished = Event()
-        stop_event = Event()
-        measured: list[float] = []
-        values: list[T] = []
-        errors: list[BaseException] = []
-        timed_out: list[bool] = []
-
-        def clock() -> None:
-            start_time = perf_counter()
-            started.set()
-            if stop_after is None:
-                finished.wait()
-                timed_out.append(False)
-            elif finished.wait(stop_after):
-                timed_out.append(False)
-            else:
-                stop_event.set()
-                finished.wait()
-                timed_out.append(True)
-            measured.append(perf_counter() - start_time)
-
-        def work() -> None:
-            started.wait()
-            try:
-                values.append(function(stop_event))
-            except TimeoutError:
-                timed_out.append(True)
-            except BaseException as error:
-                errors.append(error)
-            finally:
-                finished.set()
-
-        timer_thread = Thread(target=clock, name="experiment-clock")
-        worker_thread = Thread(target=work, name="experiment-worker")
-        timer_thread.start()
-        worker_thread.start()
-        try:
-            worker_thread.join()
-        except KeyboardInterrupt:
-            stop_event.set()
-            worker_thread.join()
-            timer_thread.join()
-            raise
-        timer_thread.join()
-
-        if errors:
-            raise errors[0]
-        return TimedResult(values[0] if values else None, measured[0], any(timed_out))
-
-
-def with_stop(counters: Counters, stop_event: Event) -> Counters:
-    counters.stop_event = stop_event
-    return counters
+# APSP_ALGORITHMS = ("dijkstra", "floyd-warshall", "johnson")
+# MAX_FLOYD_CELLS = 4_000_000
 
 def experiment_2_1(shelter_capacity: int | None = None, datasets=DATASETS) -> tuple[int, ...]:
     """When do shelters become the problem? \n
@@ -340,7 +272,6 @@ def exp_2_1_runner(
         }
     return results
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run graph network experiments.")
     parser.add_argument("--experiment", choices=("2_1", "2_2", "2_3"), default="2_1")
@@ -431,8 +362,6 @@ def main() -> None:
     else:
         for output_file in experiment_2_3():
             print(output_file)
-
-
 
 if __name__ == "__main__":
     main()
