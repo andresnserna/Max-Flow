@@ -1,6 +1,7 @@
 #runtime files
 Max Flow/__pycache__
 *.pyc
+Max Flow/data/__pycache__
 
 #project briefings
 Project #2 Part 1.pdf
