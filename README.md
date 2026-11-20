@@ -95,6 +95,17 @@ The runner prints an estimated first-drop capacity before the search, then repor
 python3 "Max Flow/experiments.py" --experiment 2_1 --k tiny=10 --k medium=20
 ```
 
+Run the report's 2.1 search with the selected lower-bound capacities, including the existing generated 30-node cases:
+
+```sh
+python3 "Max Flow/experiments.py" --experiment 2_1 --verbose \
+  --k tiny=145 \
+  --k small=240 \
+  --k medium=185 \
+  --k generated-30-s2-seed9=105 \
+  --k generated-30-s4-seed9=150
+```
+
 Generate deterministic same-size instances with different shelter counts using a fixed seed:
 
 ```sh
